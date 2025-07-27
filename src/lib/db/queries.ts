@@ -1,3 +1,19 @@
+export async function insertDownloadStats(filename: string, count: number) {
+	await db.insert(downloads)
+		.values({
+			filename,
+			count,
+			firstDownload: new Date(),
+			lastDownload: new Date(),
+		})
+		.onConflictDoUpdate({
+			target: downloads.filename,
+			set: {
+				count,
+				lastDownload: new Date(),
+			},
+		});
+}
 import { db } from './database.js';
 import { downloads, downloadLogs } from './schema.js';
 import { eq, sql } from 'drizzle-orm';
