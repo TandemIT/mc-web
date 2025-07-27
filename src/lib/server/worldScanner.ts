@@ -7,26 +7,38 @@ import { getDownloadStats } from '../db/queries.js';
 
 /**
  * Parse filename according to compress.sh naming convention
- * Expected format: category__group__world_name__version.tar.xz
- * Example: atm__all_the_mods_9__my_world__1.0.43.tar.xz
+ * Expected format: {modpack}_{version}__{world_name}.tar.xz
+ * Example: atm_atm10_v2.42__main.tar.xz
  */
 function parseFilename(filename: string) {
 	// Remove extension
 	const nameWithoutExt = filename.replace(/\.(tar\.xz|zip|tar\.gz)$/, '');
-	
+
 	// Split by double underscore
 	const parts = nameWithoutExt.split('__');
-	
-	if (parts.length >= 3) {
-		const [category, group, worldName, version] = parts;
+
+	if (parts.length === 2) {
+		// parts[0] = modpack_version, parts[1] = world_name
+		const modpackVersion = parts[0];
+		const worldName = parts[1];
+		// Split modpackVersion on last underscore
+		const lastUnderscore = modpackVersion.lastIndexOf('_');
+		let modpack = 'unknown';
+		let version = null;
+		if (lastUnderscore !== -1) {
+			modpack = modpackVersion.substring(0, lastUnderscore);
+			version = modpackVersion.substring(lastUnderscore + 1);
+		} else {
+			modpack = modpackVersion;
+		}
 		return {
-			category: category || 'unknown',
-			group: group || 'unknown',
+			category: modpack || 'unknown',
+			group: 'default',
 			worldName: worldName || 'default',
-			version: version || null
+			version: version
 		};
 	}
-	
+
 	// Fallback for non-standard naming
 	return {
 		category: 'unknown',

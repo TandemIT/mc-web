@@ -58,7 +58,7 @@ The goal is to completely replace the web interface with a modern web applicatio
 - Show a preview or thumbnail of each world if available (e.g., Minecraft map images).
 - Allow custom archive naming (if aligned with existing naming constraints).
 - Provide a simple activity log or history of archive downloads.
-- Integrate with cloud storage providers for backup (Dropbox, Google Drive, etc.).
+
 
 ---
 
