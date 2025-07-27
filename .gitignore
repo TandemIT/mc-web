@@ -1,25 +1,56 @@
-node_modules
+# Node
+node_modules/
+pnpm-lock.yaml
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# Svelte/Vite
+.svelte-kit/
+build/
+dist/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# SQLite
+sqlite.db
+
+drizzle/meta/*.json
+# Keep migration SQL files
+!drizzle/*.sql
+
+# Environment
+.env*
+
+# Docker
+*.tar
+*.tar.xz
+docker-compose.override.yml
+docker-compose.local.yml
+
+# VS Code
+.vscode/
 
 # OS
-.DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
 
-# Env
-.env
-.env.*
-!.env.example
-!.env.test
+# Web static/build
+web/assets/
+web/node_modules/
+web/dist/
+web/.vite/
 
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+# Backups/Worlds
+worlds/*.tar.xz
+!worlds/.gitkeep
 
-web/
+# Misc
+*.log
+*.bak
+*.tmp
+/web

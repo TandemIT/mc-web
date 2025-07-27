@@ -1,380 +1,577 @@
 # Project Plan — Minecraft World Archiver Rebuild
 
+## Current Status 🔄
+
+**Last Updated:** January 27, 2025  
+**Phase:** 3 (Frontend Components) - In Progress  
+**Overall Progress:** ~70% Complete
+
+### ✅ Completed
+- **Phase 1:** Project Setup & Foundation (100%)
+- **Phase 2:** Core Backend Logic (95%)
+- **Phase 3:** Frontend Components (60%)
+
+### 🔄 Currently Working On
+- Debugging server startup issues
+- Testing API endpoints
+- Finalizing frontend integration
+
+### 🎯 Next Steps
+- Fix server initialization
+- Complete FlexSearch integration
+- Add theme toggle and navigation
+- Test full application flow
+
+---
+
 ## Overview
 
-This document outlines the step-by-step plan to rebuild the existing PHP-based Minecraft world archiving system using **SvelteKit 2 (Svelte 5 + runes)**, **shadcn-svelte**, and **TypeScript**.
-
-The current system provides a web interface to list, download, and archive Minecraft worlds. The new implementation will maintain full feature parity while modernizing the technology stack and improving user experience, security, and maintainability.
+This plan outlines the complete rebuild of the Minecraft world archiving system from PHP to **SvelteKit 2 with Svelte 5 and runes**. The system will maintain full feature parity with the existing PHP implementation while modernizing the architecture, improving security, and enhancing user experience.
 
 ---
 
 ## Current System Analysis
 
-### Existing Features
-- **World Listing**: Displays all Minecraft worlds from a configured directory
-- **Metadata Display**: Shows world name, size, last modified date, download count
-- **Individual Downloads**: Users can download zipped archives of individual worlds
-- **Bulk Downloads**: Users can download all worlds at once
-- **Categorization**: Worlds are automatically categorized (ATM, Create, Stoneblock, etc.)
-- **Search & Filtering**: Frontend search and filter functionality
+### Existing Features (PHP Implementation)
+- **World Listing**: Scans `/worlds` directory for `.tar.xz` files
+- **Metadata Extraction**: Parses filenames to extract modpack info, versions, categories
+- **Download Functionality**: Secure file serving with download tracking
 - **Statistics**: Total worlds, size, downloads, categories
-- **Responsive UI**: Mobile-friendly interface with dark/light theme
-- **Security**: Input validation, rate limiting, CORS protection
+- **Caching**: 5-minute cache for world listings
+- **Security**: Input validation, path traversal protection, rate limiting
+- **UI**: Modern responsive interface with search, filtering, sorting
 
-### Current Tech Stack
-- **Backend**: PHP with custom API endpoints
-- **Frontend**: Vanilla HTML/CSS/JavaScript
-- **Compression**: Bash script using tar.xz
-- **Deployment**: Docker with Apache
+### File Naming Convention (from compress.sh)
+- Pattern: `{modpack}_{version}__{world_name}.tar.xz`
+- Examples: `atm_atm10_v2.42__main.tar.xz`, `tandem_create__default.tar.xz`
+- Hyphens converted to underscores for safety
+- Output directory: `/root/web/src/worlds` (will be `./worlds` in new system)
 
 ---
 
-## New Architecture
+## Technology Stack
 
-### Technology Stack
-- **Framework**: SvelteKit 2 with Svelte 5 + runes
-- **Language**: TypeScript for type safety
-- **UI Library**: shadcn-svelte for components
-- **Styling**: Tailwind CSS (included with shadcn-svelte)
-- **Runtime**: Node.js
-- **File Handling**: Native Node.js fs/path APIs
-- **Compression**: Node.js archiver or tar libraries
-- **Deployment**: Docker with Node.js
+### Core Framework
+- **SvelteKit 2** with **Svelte 5 + runes** (full-stack framework)
+- **TypeScript** for type safety
+- **Node.js adapter** for server-side rendering and API endpoints
 
-### Project Structure
+### Database & ORM
+- **SQLite** for statistics and download tracking
+- **Drizzle ORM** for type-safe database operations
+- **Drizzle Kit** for schema migrations
+
+### UI/UX
+- **shadcn-svelte** component library
+- **Tailwind CSS** for styling
+- **Lucide Svelte** for icons
+- **FlexSearch** for fast client-side search functionality
+- Responsive design (mobile-first)
+- Full accessibility compliance (WCAG 2.1 AA)
+
+### Development Tools
+- **Vite** for build tooling
+- **ESLint** + **Prettier** for code quality
+- **Vitest** for testing
+- **TypeScript** strict mode
+
+### Deployment
+- **Docker** containerization with **Node.js adapter**
+- **Nginx reverse proxy** (handles compression, TLS, caching)
+- **SvelteKit server endpoints** (handles dynamic logic, file streaming, API responses, file downloading)
+- Volume mounting for worlds directory
+
+---
+
+## Project Structure
+
 ```
-src/
-├── lib/
-│   ├── components/          # Reusable UI components
-│   ├── server/             # Server-side utilities
-│   │   ├── world-scanner.ts
-│   │   ├── file-handler.ts
-│   │   └── compression.ts
-│   ├── stores/             # Svelte stores for state management
-│   ├── types/              # TypeScript type definitions
-│   └── utils/              # Shared utilities
-├── routes/
-│   ├── +layout.svelte      # Main layout
-│   ├── +page.svelte        # Home page
-│   └── api/                # API endpoints
-│       ├── worlds/
-│       │   └── +server.ts
-│       ├── download/
-│       │   └── +server.ts
-│       └── stats/
-│           └── +server.ts
-├── app.html                # HTML template
-└── app.css                 # Global styles
+mc-web/
+├── src/
+│   ├── lib/
+│   │   ├── components/          # Reusable UI components
+│   │   │   ├── ui/             # shadcn-svelte components
+│   │   │   ├── WorldCard.svelte
+│   │   │   ├── WorldGrid.svelte
+│   │   │   ├── SearchBar.svelte
+│   │   │   ├── FlexSearchProvider.svelte
+│   │   │   └── StatsDisplay.svelte
+│   │   ├── server/             # Server-side utilities
+│   │   │   ├── worldScanner.ts
+│   │   │   ├── fileHandler.ts
+│   │   │   ├── cache.ts
+│   │   │   ├── database.ts     # Drizzle database connection
+│   │   │   └── security.ts
+│   │   ├── db/                 # Database layer
+│   │   │   ├── schema.ts       # Drizzle schema definitions
+│   │   │   ├── queries.ts      # Database queries
+│   │   │   └── migrations/     # Schema migrations
+│   │   ├── stores/             # Svelte stores
+│   │   │   ├── worlds.ts
+│   │   │   ├── search.ts
+│   │   │   └── ui.ts
+│   │   ├── types/              # TypeScript definitions
+│   │   │   ├── world.ts
+│   │   │   └── api.ts
+│   │   └── utils/              # Utility functions
+│   │       ├── formatting.ts
+│   │       ├── validation.ts
+│   │       ├── constants.ts
+│   │       └── flexsearch.ts
+│   ├── routes/
+│   │   ├── +layout.svelte      # Main layout
+│   │   ├── +page.svelte        # Home page
+│   │   ├── +page.server.ts     # Server-side data loading
+│   │   ├── api/
+│   │   │   ├── worlds/
+│   │   │   │   └── +server.ts  # World listing endpoint
+│   │   │   ├── stats/
+│   │   │   │   └── +server.ts  # Statistics endpoint
+│   │   │   └── refresh/
+│   │   │       └── +server.ts  # Cache refresh endpoint
+│   │   └── download/
+│   │       └── [filename]/
+│   │           └── +server.ts  # File download handler
+│   ├── app.html                # HTML template
+│   └── app.css                 # Global styles
+├── static/                     # Static assets
+├── worlds/                     # Minecraft world files (volume mount)
+├── compress.sh                 # Bash script (maintained)
+├── Dockerfile
+├── docker-compose.yml
+├── package.json
+├── svelte.config.js
+├── vite.config.ts
+├── tailwind.config.js
+└── tsconfig.json
 ```
+
+---
+
+## SvelteKit Architecture Strategy
+
+### Full-Stack SvelteKit Approach
+
+This project will leverage **SvelteKit's native full-stack capabilities** rather than treating it as a thin wrapper around Express-style APIs:
+
+#### **Server-Side Rendering & Data Loading**
+- **`+page.server.ts`**: Initial world data loading with server-side caching
+- **Server endpoints (`+server.ts`)**: Handle API requests, file downloads, and dynamic operations
+- **Form actions**: Handle any form submissions (if needed for admin features)
+
+#### **File Serving Strategy**
+- **SvelteKit endpoints**: Handle file downloads with proper security, logging, and download tracking
+- **Nginx reverse proxy**: Handles static assets, compression, TLS termination
+- **Volume mounting**: Worlds directory mounted into container for direct file access
+
+#### **Reactive Data Flow**
+- **Runes**: Modern Svelte 5 reactivity for component state
+- **Stores**: Global state management for worlds data, search state, UI preferences
+- **FlexSearch**: Client-side search index for instant filtering and search
+
+#### **Modular Architecture Benefits**
+- **Scalable**: Easy to add new endpoints, components, and features
+- **Maintainable**: Clear separation between server logic, client logic, and UI components
+- **Testable**: Each layer can be tested independently
+- **Flexible**: Can handle increasing update frequencies without architectural changes
+
+#### **Integration with Existing Tooling**
+- **Bash script compatibility**: Maintains existing file naming conventions
+- **Docker deployment**: Containerized for easy deployment and scaling
+- **Nginx integration**: Optimized for reverse proxy deployment
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Project Setup & Foundation (Days 1-2)
+### Phase 1: Project Setup & Foundation (Day 1) ✅ COMPLETED
 
-#### Step 1.1: Initialize SvelteKit Project ✅
-- [x] Create new SvelteKit project with TypeScript
-- [x] Configure shadcn-svelte and Tailwind CSS
-- [x] Set up project structure and basic configuration
-- [x] Configure TypeScript strict mode and ESLint
+#### 1.1 Initialize SvelteKit Project
+- [x] Create new SvelteKit project with TypeScript and Node.js adapter
+- [x] Configure Vite, ESLint, Prettier
+- [x] Set up Tailwind CSS 4
+- [x] Install and configure shadcn-svelte
+- [ ] Install and configure FlexSearch for client-side search
+- [x] Install and configure Drizzle ORM with SQLite
+- [x] Create SvelteKit file-based routing structure
 
-**Deliverables:**
-- ✅ Working SvelteKit development environment
-- ✅ Basic project structure
-- ✅ Configuration files (tsconfig.json, tailwind.config.js, etc.)
+#### 1.2 Database Schema & Types
+- [x] Define Drizzle schema for downloads and statistics
+- [x] Create database migrations
+- [x] Define `World` interface based on PHP WorldScanner
+- [x] Create API response types
+- [x] Set up utility types for search/filtering
 
-#### Step 1.2: Type Definitions ✅
-- [x] Create TypeScript interfaces for world data
-- [x] Define API response types
-- [x] Create utility types for filtering and sorting
-
-**Deliverables:**
-- ✅ `src/lib/types/world.ts` - World data interfaces
-- ✅ `src/lib/types/api.ts` - API response types
-
-#### Step 1.3: Environment Configuration ✅
-- [x] Set up environment variables for worlds directory path (Docker volume mount)
-- [x] Configure development and production environments
-- [x] Create configuration validation
-- [x] Plan Docker volume mounting strategy
-- [x] Set up environment-specific configurations
+#### 1.3 Basic Layout & Routing
+- [x] Create `+layout.svelte` with responsive design
+- [ ] Implement navigation header with theme toggle
+- [x] Set up `+page.svelte` for main world listing
+- [x] Create initial server endpoints structure
 
 **Deliverables:**
-- ✅ `.env` and `.env.example` files
-- ✅ Configuration validation utilities
-- ✅ Docker environment configuration planning
+- Working SvelteKit project with TypeScript
+- Basic responsive layout
+- Type definitions for core entities
 
-### Phase 2: Backend API Development (Days 3-5)
+### Phase 2: Core Backend Logic (Day 2) ✅ COMPLETED
 
-#### Step 2.1: World Scanner Service ✅
+#### 2.1 World Scanner Service
 - [x] Port PHP WorldScanner to TypeScript
-- [x] Implement file system scanning for mounted worlds directory
-- [x] Add metadata extraction (size, modified date, etc.)
-- [x] Implement category detection logic (based on filename conventions from Bash script reference)
-- [x] Add download count tracking with persistent storage
-- [x] Handle file naming conventions (underscores, tar.xz format)
+- [x] Implement file system scanning
+- [x] Add filename parsing logic (category, version, group)
+- [x] Create metadata extraction functions
+
+#### 2.2 Database Operations
+- [x] Implement download tracking with Drizzle ORM
+- [x] Create statistics aggregation queries
+- [x] Set up database connection and query utilities
+- [ ] Implement data migration from existing downloads.json (if exists)
+
+#### 2.3 SvelteKit Server Endpoints
+- [x] `routes/api/worlds/+server.ts` - World listing with metadata
+- [x] `routes/download/[filename]/+server.ts` - Secure file streaming with DB tracking
+- [x] `routes/api/stats/+server.ts` - Statistics endpoint using database
+- [ ] `routes/+page.server.ts` - Server-side data loading for main page
+- [x] Implement server-side caching mechanism (5-minute TTL)
+
+#### 2.4 Security Implementation
+- [x] Input validation and sanitization
+- [x] Path traversal protection
+- [ ] Rate limiting middleware
+- [x] File access security checks
 
 **Deliverables:**
-- ✅ `src/lib/server/world-scanner.ts`
-- ✅ File naming convention utilities
-- ✅ Secure file handling service
+- Complete SvelteKit server endpoints matching PHP functionality
+- SQLite database with Drizzle ORM for statistics tracking
+- Secure file streaming with database-backed download tracking
+- Server-side caching and data loading
 
-#### Step 2.2: API Endpoints ✅
-- [x] Create `/api/worlds` endpoint for listing worlds
-- [x] Create `/api/worlds/[id]` endpoint for individual world info
-- [x] Create `/api/download/[filename]` endpoint for file downloads
-- [x] Create `/api/download/all` endpoint for bulk downloads
-- [x] Create `/api/stats` endpoint for statistics
+### Phase 3: Frontend Components (Day 3) 🔄 IN PROGRESS
 
-**Deliverables:**
-- ✅ SvelteKit API routes with full CRUD operations
-- ✅ Input validation and sanitization
-- ✅ Error handling and logging
+#### 3.1 Core Components
+- [x] `WorldCard` - Individual world display (integrated in main page)
+- [x] `WorldGrid` - Grid/list view container (integrated in main page)
+- [x] `SearchBar` - Search interface (basic implementation)
+- [ ] `FlexSearchProvider` - FlexSearch index management
+- [x] `StatsDisplay` - Statistics dashboard (integrated in main page)
 
-#### Step 2.3: Security Implementation ✅
-- [x] Implement input validation and sanitization
-- [x] Add path traversal protection
-- [x] Implement rate limiting
-- [x] Add CORS configuration
-- [x] Secure file serving
+#### 3.2 State Management
+- [x] Worlds store with reactive updates (using Svelte 5 runes)
+- [x] Search/filter state management (using Svelte 5 runes)
+- [ ] UI state (view mode, theme, etc.)
 
-**Deliverables:**
-- ✅ Security middleware and utilities
-- ✅ Rate limiting implementation
-- ✅ Secure file download handling
-
-#### Step 2.4: Caching System ✅
-- [x] Implement in-memory caching for world listings
-- [x] Add cache invalidation strategies
-- [x] Optimize performance for large world directories
+#### 3.3 Data Fetching & Search
+- [x] Implement world data fetching
+- [ ] Set up FlexSearch index with world data
+- [x] Add loading states and error handling
+- [ ] Implement reactive search with FlexSearch
 
 **Deliverables:**
-- ✅ Caching utilities and strategies
-- ✅ Performance optimizations
+- Complete UI component library
+- Reactive state management
+- Data fetching with proper error handling
 
-### Phase 3: Frontend Development (Days 6-9)
+### Phase 4: Advanced Features (Day 4)
 
-#### Step 3.1: Core Components ✅
-- [x] Create world card component
-- [x] Create world list/grid component
-- [x] Create search and filter components
-- [x] Create statistics display component
-- [x] Create loading states and error handling
+#### 4.1 Search & Filtering
+- [ ] Real-time search with FlexSearch (fuzzy matching, typo tolerance)
+- [ ] Category-based filtering with FlexSearch facets
+- [ ] Sorting options (name, size, date, downloads)
+- [ ] Advanced filters (version, tags) integrated with FlexSearch
+- [ ] Search result highlighting and suggestions
 
-**Deliverables:**
-- ✅ Reusable UI components using shadcn-svelte
-- ✅ Component documentation and examples
+#### 4.2 Enhanced UI/UX
+- [ ] Loading animations and skeletons
+- [ ] Infinite scroll or pagination
+- [ ] Keyboard navigation
+- [ ] Mobile-optimized interactions
 
-#### Step 3.2: Main Page Layout ✅
-- [x] Implement responsive layout
-- [x] Create hero section with statistics
-- [x] Add search and filter interface
-- [x] Implement world listing with pagination
-- [x] Add view toggle (grid/list)
-
-**Deliverables:**
-- ✅ Complete main page layout
-- ✅ Responsive design for all screen sizes
-
-#### Step 3.3: State Management ✅
-- [x] Create Svelte stores for world data
-- [x] Implement search and filter state
-- [x] Add loading and error states
-- [x] Create download progress tracking
+#### 4.3 Download Features
+- [ ] Individual world downloads
+- [ ] Bulk download functionality
+- [ ] Download progress indicators
+- [ ] Download history/tracking
 
 **Deliverables:**
-- ✅ Svelte stores for application state
-- ✅ Reactive data flow implementation
+- Advanced FlexSearch-powered search and filtering
+- Enhanced user experience features
+- Complete download functionality
 
-#### Step 3.4: Interactive Features ✅
-- [x] Implement real-time search
-- [x] Add sorting and filtering
-- [x] Create download functionality
-- [x] Add bulk selection and download
-- [x] Implement theme switching
+### Phase 5: Accessibility & Polish (Day 5)
 
-**Deliverables:**
-- ✅ Interactive search and filter system
-- ✅ Download functionality with progress indicators
+#### 5.1 Accessibility Implementation
+- [ ] ARIA labels and roles
+- [ ] Keyboard navigation
+- [ ] Screen reader support
+- [ ] Color contrast compliance
+- [ ] Focus management
 
-### Phase 4: User Experience & Accessibility (Days 10-11)
+#### 5.2 Performance Optimization
+- [ ] Code splitting and lazy loading
+- [ ] Image optimization
+- [ ] Bundle size optimization
+- [ ] Caching strategies
 
-#### Step 4.1: Accessibility Implementation ✅
-- [x] Add ARIA labels and roles
-- [x] Implement keyboard navigation
-- [ ] Ensure screen reader compatibility
-- [ ] Test color contrast ratios
-- [x] Add focus management
-
-**Deliverables:**
-- ✅ WCAG 2.1 AA compliant interface
-- [ ] Accessibility testing results
-
-#### Step 4.2: Performance Optimization ✅
-- [x] Implement lazy loading for world listings
-- [x] Optimize image loading and caching
-- [x] Add service worker for offline functionality
-- [x] Implement progressive enhancement
+#### 5.3 Error Handling & Validation
+- [ ] Comprehensive error boundaries
+- [ ] User-friendly error messages
+- [ ] Form validation
+- [ ] Network error handling
 
 **Deliverables:**
-- ✅ Performance optimizations
-- ✅ Lighthouse score improvements
+- Fully accessible application
+- Optimized performance
+- Robust error handling
 
-#### Step 4.3: Error Handling & User Feedback ✅
-- [x] Create user-friendly error messages
-- [x] Add toast notifications
-- [x] Implement loading indicators
-- [x] Add download progress feedback
+### Phase 6: Testing & Documentation (Day 6)
 
-**Deliverables:**
-- ✅ Comprehensive error handling system
-- ✅ User feedback mechanisms
+#### 6.1 Testing Implementation
+- [ ] Unit tests for utilities and services
+- [ ] Component testing with Testing Library
+- [ ] API endpoint testing
+- [ ] Integration tests
 
-### Phase 5: Advanced Features (Days 12-13)
+#### 6.2 Documentation
+- [ ] API documentation
+- [ ] Component documentation
+- [ ] Deployment guide
+- [ ] Development setup guide
 
-#### Step 5.1: Enhanced Functionality ✅
-- [x] Add world preview/thumbnail support
-- [x] Implement search suggestions/autocomplete with FlexSearch
-- [x] Enhanced search performance with full-text indexing
-- [ ] Implement custom archive naming
-- [ ] Create download history/activity log
-- [ ] Add world metadata editing
-
-**Deliverables:**
-- ✅ Enhanced world management features
-- ✅ FlexSearch-powered search with suggestions
-- [ ] Activity logging system
-
-#### Step 5.2: Docker Integration Preparation
-- [ ] Design Docker strategy for development and production
-- [ ] Plan volume mounting for Minecraft worlds directory
-- [ ] Prepare environment configuration for containerization
-- [ ] Design multi-stage build approach
-
-**Deliverables:**
-- Docker architecture design
-- Environment configuration strategy
-
-### Phase 6: Testing & Quality Assurance (Days 14-15)
-
-#### Step 6.1: Unit Testing
-- [ ] Write unit tests for utility functions
-- [ ] Test API endpoints
-- [ ] Test component functionality
-- [ ] Achieve >80% code coverage
+#### 6.3 Code Quality
+- [ ] ESLint configuration and fixes
+- [ ] TypeScript strict mode compliance
+- [ ] Code review and refactoring
 
 **Deliverables:**
 - Comprehensive test suite
-- Code coverage reports
+- Complete documentation
+- Production-ready code quality
 
-#### Step 6.2: Integration Testing
-- [ ] Test end-to-end user workflows
-- [ ] Test file upload/download functionality
-- [ ] Test error scenarios
-- [ ] Cross-browser compatibility testing
+### Phase 7: Dockerization & Deployment (Day 7)
 
-**Deliverables:**
-- Integration test suite
-- Browser compatibility matrix
+#### 7.1 Docker Configuration
+- [ ] Multi-stage Dockerfile
+- [ ] Development and production configurations
+- [ ] Volume mounting for worlds directory
+- [ ] Security hardening
 
-#### Step 6.3: Security Testing
-- [ ] Test input validation
-- [ ] Verify path traversal protection
-- [ ] Test rate limiting
+#### 7.2 Docker Compose Setup
+- [ ] Development environment
+- [ ] Production environment
+- [ ] Health checks and restart policies
+- [ ] Environment variable management
+
+#### 7.3 Deployment Testing
+- [ ] Local Docker testing
+- [ ] Production deployment verification
+- [ ] Performance testing
 - [ ] Security audit
 
 **Deliverables:**
-- Security test results
-- Vulnerability assessment
+- Complete Docker setup
+- Production-ready deployment
+- Deployment documentation
 
-### Phase 7: Documentation & Deployment (Days 16-17)
+---
 
-#### Step 7.1: Documentation
-- [ ] Create comprehensive README
-- [ ] Document API endpoints
-- [ ] Write deployment instructions
-- [ ] Create user guide
+## Technical Specifications
 
-**Deliverables:**
-- Complete project documentation
-- API documentation
-- Deployment guide
+### SvelteKit Server Endpoints
 
-#### Step 7.2: Docker Implementation
-- [ ] Create multi-stage Dockerfile (development and production)
-- [ ] Implement docker-compose.yml for complete stack
-- [ ] Configure volume mounting for Minecraft worlds directory
-- [ ] Set up non-root user and security best practices
-- [ ] Add health checks and restart policies
-- [ ] Configure environment-specific builds (.env support)
-- [ ] Test hot reloading in development mode
-- [ ] Optimize build caching and image size
+#### GET /api/worlds (+server.ts)
+```typescript
+interface WorldsResponse {
+  success: boolean;
+  worlds: World[];
+  statistics: Statistics;
+  generated_at: string;
+  cache_expires: string;
+}
+```
 
-**Deliverables:**
-- Production-ready Dockerfile with multi-stage builds
-- docker-compose.yml for development and production
-- Volume mounting configuration
-- Security-hardened container setup
-- Complete Docker deployment documentation
+#### GET /download/[filename] (+server.ts)
+- Secure file streaming with `Response` object
+- Download count tracking via server-side logic
+- Proper Content-Disposition headers
+- Path traversal protection and validation
 
-#### Step 7.3: Final Testing & Optimization
-- [ ] Performance testing and optimization
-- [ ] Final security review
-- [ ] User acceptance testing
-- [ ] Bug fixes and polish
+#### GET /api/stats (+server.ts)
+```typescript
+interface Statistics {
+  total_worlds: number;
+  total_size: number;
+  total_downloads: number;
+  categories: Record<string, number>;
+}
+```
 
-**Deliverables:**
-- Production-ready application
-- Performance benchmarks
-- Final test results
+#### Server-Side Data Loading (+page.server.ts)
+```typescript
+interface PageData {
+  worlds: World[];
+  statistics: Statistics;
+  initialSearchIndex: FlexSearchIndex;
+}
+```
+
+### Database Schema (Drizzle ORM)
+
+#### Downloads Table
+```typescript
+// lib/db/schema.ts
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const downloads = sqliteTable('downloads', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  filename: text('filename').notNull().unique(),
+  count: integer('count').notNull().default(0),
+  firstDownload: integer('first_download', { mode: 'timestamp' }).notNull(),
+  lastDownload: integer('last_download', { mode: 'timestamp' }).notNull(),
+});
+
+export const downloadLogs = sqliteTable('download_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  filename: text('filename').notNull(),
+  timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
+  ipAddress: text('ip_address'), // Optional for rate limiting
+  userAgent: text('user_agent'), // Optional for analytics
+});
+```
+
+#### Database Queries
+```typescript
+// lib/db/queries.ts
+import { db } from './database';
+import { downloads, downloadLogs } from './schema';
+import { eq, sql } from 'drizzle-orm';
+
+export async function incrementDownload(filename: string, ipAddress?: string) {
+  await db.transaction(async (tx) => {
+    // Insert or update download count
+    await tx.insert(downloads)
+      .values({
+        filename,
+        count: 1,
+        firstDownload: new Date(),
+        lastDownload: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: downloads.filename,
+        set: {
+          count: sql`${downloads.count} + 1`,
+          lastDownload: new Date(),
+        },
+      });
+
+    // Log the download
+    await tx.insert(downloadLogs).values({
+      filename,
+      timestamp: new Date(),
+      ipAddress,
+    });
+  });
+}
+
+export async function getDownloadStats() {
+  return await db.select({
+    filename: downloads.filename,
+    count: downloads.count,
+    lastDownload: downloads.lastDownload,
+  }).from(downloads);
+}
+```
+
+### Data Types
+
+```typescript
+interface World {
+  filename: string;
+  displayName: string;
+  size: number;
+  formatted_size: string;
+  modified: string;
+  formatted_modified: string;
+  downloads: number;
+  category: string;
+  group: string;
+  version: string | null;
+  description: string;
+  tags: string[];
+  download_url: string;
+}
+```
+
+### Security Measures
+
+1. **Input Validation**: All user inputs sanitized and validated
+2. **Path Traversal Protection**: Strict filename validation
+3. **Rate Limiting**: 100 requests per hour per IP
+4. **CORS Configuration**: Restricted to allowed origins
+5. **File Access Control**: Only serve files from worlds directory
+
+### Performance Targets
+
+- **Initial Load**: < 2 seconds
+- **Search Response**: < 100ms
+- **Download Start**: < 500ms
+- **Bundle Size**: < 500KB (gzipped)
+- **Lighthouse Score**: > 90 (all categories)
+
+---
+
+## Migration Strategy
+
+### Data Compatibility
+- Maintain existing filename conventions
+- Preserve download counts from PHP system
+- Ensure cache compatibility during transition
+
+### Deployment Strategy
+1. Deploy new system alongside existing PHP
+2. Test with subset of users
+3. Gradual migration with fallback capability
+4. Complete switchover after validation
+
+### Rollback Plan
+- Keep PHP system as backup
+- Database/cache export/import procedures
+- Quick deployment rollback capability
 
 ---
 
 ## Success Criteria
 
 ### Functional Requirements
-- ✅ List all Minecraft worlds with metadata
-- ✅ Download individual world archives
-- ✅ Download all worlds as single archive
-- ✅ Search and filter functionality
-- ✅ Responsive design across all devices
-- ✅ Accessibility compliance (WCAG 2.1 AA)
+- [ ] All existing PHP features replicated
+- [ ] Improved performance and user experience
+- [ ] Full accessibility compliance
+- [ ] Mobile-responsive design
 
 ### Technical Requirements
-- ✅ Built with SvelteKit 2 + Svelte 5 + runes
-- ✅ TypeScript for type safety
-- ✅ shadcn-svelte UI components
-- ✅ Secure file handling and validation
-- ✅ Performance optimization
-- ✅ Docker deployment with volume mounting
-- ✅ Multi-stage builds for development and production
-- ✅ Non-root container security
+- [ ] TypeScript strict mode compliance
+- [ ] 90%+ test coverage
+- [ ] Docker deployment working
+- [ ] Security audit passed
 
-### Quality Requirements
-- ✅ >80% code coverage
-- ✅ Security audit passed
-- ✅ Cross-browser compatibility
-- ✅ Lighthouse score >90
-- ✅ Comprehensive documentation
+### User Experience
+- [ ] Faster load times than PHP version
+- [ ] Intuitive search and filtering
+- [ ] Smooth mobile experience
+- [ ] Accessible to all users
 
 ---
 
-## Risk Assessment & Mitigation
+## Risk Mitigation
 
 ### Technical Risks
-1. **File System Performance**: Large directories may cause performance issues
-   - *Mitigation*: Implement pagination and caching
-2. **Memory Usage**: Large file operations may consume excessive memory
-   - *Mitigation*: Use streaming for file operations
-3. **Security Vulnerabilities**: File serving always carries security risks
-   - *Mitigation*: Comprehensive input validation and security testing
+- **File System Access**: Test thoroughly on target deployment environment
+- **Performance**: Implement caching and optimization early
+- **Security**: Regular security audits and penetration testing
 
-### Timeline Risks
-1. **Scope Creep**: Additional features may extend timeline
-   - *Mitigation*: Strict adherence to MVP requirements
-2. **Technical Complexity**: Unforeseen technical challenges
-   - *Mitigation*: Buffer time built into schedule
+### Project Risks
+- **Scope Creep**: Stick to feature parity first, enhancements later
+- **Timeline**: Daily checkpoints and milestone reviews
+- **Quality**: Automated testing and code review processes
 
 ---
 
@@ -382,20 +579,10 @@ src/
 
 1. **Approval**: Review and approve this plan
 2. **Environment Setup**: Prepare development environment
-3. **Kickoff**: Begin Phase 1 implementation
-4. **Regular Check-ins**: Daily progress updates
-5. **Milestone Reviews**: End-of-phase deliverable reviews
+3. **Phase 1 Execution**: Begin with project setup and foundation
+4. **Daily Standups**: Track progress and address blockers
+5. **Milestone Reviews**: Assess deliverables at each phase
 
 ---
 
-**Total Estimated Timeline: 17 days**
-**Key Milestones:**
-- Day 2: Foundation complete
-- Day 5: Backend API complete
-- Day 9: Frontend MVP complete
-- Day 11: UX/Accessibility complete
-- Day 13: Advanced features complete
-- Day 15: Testing complete
-- Day 17: Production ready
-
-This plan ensures a systematic approach to rebuilding the Minecraft World Archiver with modern technologies while maintaining all existing functionality and improving user experience, security, and maintainability.
+**This plan provides a comprehensive roadmap for rebuilding the Minecraft World Archiver with modern technologies while maintaining all existing functionality and improving user experience. Each phase builds upon the previous one, ensuring a systematic and reliable development process.**

@@ -1,84 +1,64 @@
-/**
- * Worlds API Endpoint - Lists all available Minecraft worlds
- */
-
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { WorldScanner } from '$lib/server/world-scanner.js';
-import { cache } from '$lib/server/cache.js';
-import type { WorldsListResponse } from '$lib/types/api.js';
+import { scanWorlds } from '$lib/server/worldScanner.js';
+import type { WorldsResponse } from '$lib/types/api.js';
 
-const CACHE_KEY = 'worlds_list';
-const scanner = new WorldScanner();
+let cache: WorldsResponse | null = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Check for refresh parameter
-		const refresh = url.searchParams.get('refresh') === 'true';
+		const now = Date.now();
 		
-		// Try to get from cache first (unless refresh is requested)
-		if (!refresh) {
-			const cachedData = cache.get<WorldsListResponse['data']>(CACHE_KEY);
-			if (cachedData) {
-				return json({
-					success: true,
-					data: cachedData
-				} satisfies WorldsListResponse);
-			}
+		// Return cached data if still valid
+		if (cache && now < cacheExpiry) {
+			return json(cache);
 		}
-
-		// Scan worlds directory
-		const { worlds, statistics } = await scanner.scanAllWorlds();
 		
-		const responseData = {
-			worlds,
+		// Scan worlds directory
+		const { worlds, statistics } = await scanWorlds();
+		
+		// Apply filters if provided
+		const category = url.searchParams.get('category');
+		const search = url.searchParams.get('search');
+		
+		let filteredWorlds = worlds;
+		
+		if (category && category !== 'all') {
+			filteredWorlds = filteredWorlds.filter(world => world.category === category);
+		}
+		
+		if (search) {
+			const searchLower = search.toLowerCase();
+			filteredWorlds = filteredWorlds.filter(world =>
+				world.displayName.toLowerCase().includes(searchLower) ||
+				world.description.toLowerCase().includes(searchLower) ||
+				world.tags.some(tag => tag.toLowerCase().includes(searchLower))
+			);
+		}
+		
+		// Create response
+		const response: WorldsResponse = {
+			success: true,
+			worlds: filteredWorlds,
 			statistics,
 			generated_at: new Date().toISOString(),
-			cache_expires: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+			cache_expires: new Date(now + CACHE_TTL).toISOString()
 		};
-
-		// Cache the response
-		cache.set(CACHE_KEY, responseData, 300); // 5 minutes TTL
-
+		
+		// Update cache
+		cache = response;
+		cacheExpiry = now + CACHE_TTL;
+		
+		return json(response);
+		
+	} catch (error) {
+		console.error('API Error:', error);
 		return json({
-			success: true,
-			data: responseData
-		} satisfies WorldsListResponse);
-
-	} catch (err) {
-		console.error('Error in worlds API:', err);
-		
-		return error(500, 'Failed to load worlds');
-	}
-};
-
-export const HEAD: RequestHandler = async ({ url }) => {
-	// Same logic as GET but without body
-	try {
-		const refresh = url.searchParams.get('refresh') === 'true';
-		
-		if (!refresh && cache.has(CACHE_KEY)) {
-			return new Response(null, {
-				status: 200,
-				headers: {
-					'Content-Type': 'application/json',
-					'Cache-Control': 'public, max-age=300'
-				}
-			});
-		}
-
-		// Check if we can scan the directory
-		await scanner.scanAllWorlds();
-		
-		return new Response(null, {
-			status: 200,
-			headers: {
-				'Content-Type': 'application/json',
-				'Cache-Control': 'public, max-age=300'
-			}
-		});
-
-	} catch (err) {
-		return new Response(null, { status: 500 });
+			success: false,
+			error: 'SCAN_FAILED',
+			message: 'Failed to scan worlds directory'
+		}, { status: 500 });
 	}
 };

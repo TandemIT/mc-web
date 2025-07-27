@@ -6,7 +6,15 @@ const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
-	kit: { adapter: adapter() }
+
+	kit: {
+		// Use Node.js adapter for Docker deployment
+		adapter: adapter(),
+		alias: {
+			'@': './src/lib',
+			'@/*': './src/lib/*'
+		}
+	}
 };
 
 export default config;

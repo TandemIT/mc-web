@@ -1,45 +1,27 @@
-/**
- * Statistics API Endpoint
- */
-
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { WorldScanner } from '$lib/server/world-scanner.js';
-import { cache } from '$lib/server/cache.js';
-import type { StatsResponse } from '$lib/types/api.js';
-
-const CACHE_KEY = 'world_statistics';
-const scanner = new WorldScanner();
+import { getTotalDownloads } from '$lib/db/queries.js';
+import { scanWorlds } from '$lib/server/worldScanner.js';
 
 export const GET: RequestHandler = async () => {
 	try {
-		// Try to get from cache first
-		const cachedStats = cache.get<StatsResponse['data']>(CACHE_KEY);
-		if (cachedStats) {
-			return json({
-				success: true,
-				data: cachedStats
-			} satisfies StatsResponse);
-		}
-
-		// If not in cache, scan worlds to get fresh statistics
-		const { statistics } = await scanner.scanAllWorlds();
+		const { statistics } = await scanWorlds();
+		const totalDownloads = await getTotalDownloads();
 		
-		const responseData = {
-			statistics
-		};
-
-		// Cache the statistics
-		cache.set(CACHE_KEY, responseData, 300); // 5 minutes TTL
-
 		return json({
 			success: true,
-			data: responseData
-		} satisfies StatsResponse);
-
-	} catch (err) {
-		console.error('Error in stats API:', err);
+			statistics: {
+				...statistics,
+				total_downloads: totalDownloads
+			}
+		});
 		
-		return error(500, 'Failed to get statistics');
+	} catch (error) {
+		console.error('Stats API Error:', error);
+		return json({
+			success: false,
+			error: 'STATS_FAILED',
+			message: 'Failed to get statistics'
+		}, { status: 500 });
 	}
 };
